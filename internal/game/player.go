@@ -24,22 +24,41 @@ type Player struct {
 
 	Color    color.Color
 	Controls Controls
+
+	Alive bool
+	Score int
 }
 
 func NewPlayer(x, y float64, c color.Color, controls Controls) *Player {
-	return &Player{
+	p := &Player{
 		X:        x,
 		Y:        y,
 		Radius:   20,
 		Accel:    0.6,
 		Friction: 0.96,
 		Bounce:   0.9,
-		Color:    color.RGBA{80, 200, 255, 255},
+		Color:    c,
 		Controls: controls,
 	}
+
+	p.Reset(x, y)
+	return p
 }
 
-func (p *Player) Update(screenW, screenH float64) {
+// respawn
+func (p *Player) Reset(x, y float64) {
+	p.X = x
+	p.Y = y
+	p.VelX = 0
+	p.VelY = 0
+	p.Alive = true
+}
+
+func (p *Player) Update(arena *Arena) {
+	if !p.Alive {
+		return
+	}
+
 	var ax, ay float64
 
 	// INPUT -> ACELERAÇÃO
@@ -73,26 +92,75 @@ func (p *Player) Update(screenW, screenH float64) {
 	p.X += p.VelX
 	p.Y += p.VelY
 
-	// colisão com paredes (bounce)
-	if p.X-p.Radius < 0 {
-		p.X = p.Radius
-		p.VelX *= -p.Bounce
+	// morte, caso cair fora
+	const margin = 150
+
+	if p.X < -margin ||
+		p.X > screenW+margin ||
+		p.Y < -margin ||
+		p.Y > screenH+margin {
+
+		p.Alive = false
+		return
 	}
-	if p.X+p.Radius > screenW {
-		p.X = screenW - p.Radius
-		p.VelX *= -p.Bounce
+
+	// colisão paredes da arena
+	for _, plat := range arena.Platforms {
+
+		left := plat.X
+		right := plat.X + plat.W
+		top := plat.Y
+		bottom := plat.Y + plat.H
+
+		playerLeft := p.X - p.Radius
+		playerRight := p.X + p.Radius
+		playerTop := p.Y - p.Radius
+		playerBottom := p.Y + p.Radius
+
+		// colisão AABB simples
+		if playerRight > left &&
+			playerLeft < right &&
+			playerBottom > top &&
+			playerTop < bottom {
+
+			// calcula penetração
+			penX := math.Min(playerRight-left, right-playerLeft)
+			penY := math.Min(playerBottom-top, bottom-playerTop)
+
+			// resolve no menor eixo
+			if penX < penY {
+				// colisão lateral (parede)
+
+				if p.X < plat.X {
+					p.X -= penX
+				} else {
+					p.X += penX
+				}
+
+				p.VelX *= -p.Bounce
+
+			} else {
+				// colisão vertical (chão/teto)
+
+				if p.Y < plat.Y {
+					p.Y -= penY
+				} else {
+					p.Y += penY
+				}
+
+				p.VelY *= -p.Bounce
+			}
+		}
+
 	}
-	if p.Y-p.Radius < 0 {
-		p.Y = p.Radius
-		p.VelY *= -p.Bounce
-	}
-	if p.Y+p.Radius > screenH {
-		p.Y = screenH - p.Radius
-		p.VelY *= -p.Bounce
-	}
+
 }
 
 func (p *Player) Draw(screen *ebiten.Image) {
+	if !p.Alive {
+		return
+	}
+
 	vector.FillCircle(
 		screen,
 		float32(p.X),
