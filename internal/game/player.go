@@ -8,6 +8,10 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
+type Controls struct {
+	Up, Down, Left, Right ebiten.Key
+}
+
 type Player struct {
 	X, Y   float64
 	VelX   float64
@@ -18,10 +22,11 @@ type Player struct {
 	Friction float64
 	Bounce   float64
 
-	Color color.Color
+	Color    color.Color
+	Controls Controls
 }
 
-func NewPlayer(x, y float64) *Player {
+func NewPlayer(x, y float64, c color.Color, controls Controls) *Player {
 	return &Player{
 		X:        x,
 		Y:        y,
@@ -30,23 +35,24 @@ func NewPlayer(x, y float64) *Player {
 		Friction: 0.96,
 		Bounce:   0.9,
 		Color:    color.RGBA{80, 200, 255, 255},
+		Controls: controls,
 	}
 }
 
 func (p *Player) Update(screenW, screenH float64) {
 	var ax, ay float64
 
-	// WASD ou setas
-	if ebiten.IsKeyPressed(ebiten.KeyA) || ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
+	// INPUT -> ACELERAÇÃO
+	if ebiten.IsKeyPressed(p.Controls.Left) {
 		ax--
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyD) || ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
+	if ebiten.IsKeyPressed(p.Controls.Right) {
 		ax++
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyW) || ebiten.IsKeyPressed(ebiten.KeyArrowUp) {
+	if ebiten.IsKeyPressed(p.Controls.Up) {
 		ay--
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyS) || ebiten.IsKeyPressed(ebiten.KeyArrowDown) {
+	if ebiten.IsKeyPressed(p.Controls.Down) {
 		ay++
 	}
 
