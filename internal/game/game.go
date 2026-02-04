@@ -4,18 +4,23 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+const (
+	screenW = 960
+	screenH = 540
+)
+
 type Game struct {
 	player *Player
 }
 
 func New() *Game {
 	return &Game{
-		player: NewPlayer(480, 270), // centro da tela
+		player: NewPlayer(screenW/2, screenH/2),
 	}
 }
 
 func (g *Game) Update() error {
-	g.player.Update()
+	g.player.Update(screenW, screenH)
 	return nil
 }
 
@@ -24,5 +29,5 @@ func (g *Game) Draw(screen *ebiten.Image) {
 }
 
 func (g *Game) Layout(w, h int) (int, int) {
-	return 960, 540
+	return screenW, screenH
 }
