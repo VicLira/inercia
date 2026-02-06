@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
@@ -18,9 +19,13 @@ type Player struct {
 	VelY   float64
 	Radius float64
 
-	Accel    float64
-	Friction float64
-	Bounce   float64
+	Accel        float64
+	Friction     float64
+	Bounce       float64
+	Gravity      float64
+	OnGround     bool
+	JumpForce    float64
+	maxFallSpeed float64
 
 	Color    color.Color
 	Controls Controls
@@ -31,14 +36,17 @@ type Player struct {
 
 func NewPlayer(x, y float64, c color.Color, controls Controls) *Player {
 	p := &Player{
-		X:        x,
-		Y:        y,
-		Radius:   20,
-		Accel:    0.6,
-		Friction: 0.96,
-		Bounce:   0.9,
-		Color:    c,
-		Controls: controls,
+		X:            x,
+		Y:            y,
+		Radius:       25,
+		Accel:        0.6,
+		Friction:     0.96,
+		JumpForce:    6.5,
+		maxFallSpeed: 12,
+		Bounce:       0.9,
+		Gravity:      0.25,
+		Color:        c,
+		Controls:     controls,
 	}
 
 	p.Reset(x, y)
@@ -55,6 +63,7 @@ func (p *Player) Reset(x, y float64) {
 }
 
 func (p *Player) Update(arena *Arena) {
+	jumpPressed := inpututil.IsKeyJustPressed(p.Controls.Up)
 	if !p.Alive {
 		return
 	}
@@ -68,8 +77,12 @@ func (p *Player) Update(arena *Arena) {
 	if ebiten.IsKeyPressed(p.Controls.Right) {
 		ax++
 	}
-	if ebiten.IsKeyPressed(p.Controls.Up) {
-		ay--
+	if jumpPressed && p.OnGround {
+		p.VelY = -p.JumpForce
+		p.OnGround = false
+	}
+	if ebiten.IsKeyPressed(p.Controls.Up) && p.VelY < 0 {
+		p.VelY -= 0.15
 	}
 	if ebiten.IsKeyPressed(p.Controls.Down) {
 		ay++
@@ -83,17 +96,21 @@ func (p *Player) Update(arena *Arena) {
 	}
 
 	// física
+	p.VelY += p.Gravity
+
 	p.VelX += ax * p.Accel
-	p.VelY += ay * p.Accel
 
 	p.VelX *= p.Friction
-	p.VelY *= p.Friction
 
 	p.X += p.VelX
 	p.Y += p.VelY
 
+	if p.VelY > p.maxFallSpeed {
+		p.VelY = p.maxFallSpeed
+	}
+
 	// morte, caso cair fora
-	const margin = 150
+	const margin = 200
 
 	if p.X < -margin ||
 		p.X > screenW+margin ||
@@ -144,11 +161,12 @@ func (p *Player) Update(arena *Arena) {
 
 				if p.Y < plat.Y {
 					p.Y -= penY
+					p.VelY = 0
+					p.OnGround = true
 				} else {
 					p.Y += penY
+					p.VelY *= -p.Bounce
 				}
-
-				p.VelY *= -p.Bounce
 			}
 		}
 
