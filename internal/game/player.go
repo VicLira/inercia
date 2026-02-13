@@ -2,9 +2,11 @@ package game
 
 import (
 	"image/color"
+	"inercia/internal/netcode"
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
@@ -14,6 +16,7 @@ type Controls struct {
 }
 
 type Player struct {
+	Name   string
 	X, Y   float64
 	VelX   float64
 	VelY   float64
@@ -34,8 +37,9 @@ type Player struct {
 	Score int
 }
 
-func NewPlayer(x, y float64, c color.Color, controls Controls) *Player {
+func NewPlayer(name string, x, y float64, c color.Color, controls Controls) *Player {
 	p := &Player{
+		Name:         name,
 		X:            x,
 		Y:            y,
 		Radius:       25,
@@ -187,4 +191,24 @@ func (p *Player) Draw(screen *ebiten.Image) {
 		p.Color,
 		false,
 	)
+
+	// nome acima do player
+	ebitenutil.DebugPrintAt(
+		screen,
+		p.Name,
+		int(p.X)-30,
+		int(p.Y-p.Radius-14),
+	)
+}
+
+func (p *Player) ApplyInput(in netcode.Input) {
+	if in.Left {
+		p.VelX -= p.Accel
+	}
+	if in.Right {
+		p.VelX += p.Accel
+	}
+	if in.Up && p.OnGround {
+		p.VelY = -p.JumpForce
+	}
 }
